@@ -1,0 +1,11 @@
+.osiris_pid
+.shutdown_pid
+tmp
+temp
+bak
+server.log
+/client
+/_client
+custom.old
+*.bak
+*.lnk
