@@ -1,0 +1,128 @@
+import com.rameses.annotations.*
+import com.rameses.common.*;
+import com.rameses.services.extended.*;
+
+
+class BatchGRService
+{
+	@Env
+	def env
+
+	@DataContext('batchgr_items_forrevision')
+	def em_items_forrevision
+
+	@DataContext('batchgr_log')
+	def em_batchgr_log 
+
+	@DataContext('batchgr_error')
+	def em_error 
+
+	@ActiveDB('batchgr')
+	def em
+    
+	@Service('GeneralRevisionService')
+	def grSvc
+
+	@Service('FAASService')
+	def faasSvc 
+
+
+	@ProxyMethod
+	public def getRyList(lguid, ry, rputype ) {
+		return grSvc.getRyList(lguid, ry, rputype )
+	}
+
+	@ProxyMethod
+	public void buildItemsForRevision( params ) {
+		params.barangayid = params.barangay.objid 
+		params.rputype = (params.rputype ? params.rputype : '%')
+		em_items_forrevision.find([barangayid:params.barangayid]).delete();
+		em.insertItemsForRevision(params)
+	}
+
+
+	@ProxyMethod
+	public List getFaasesForRevision(params) {
+		return em_items_forrevision
+					.find([barangayid:params.barangay.objid])
+					.limit(params.count)
+					.orderBy('pin, suffix')
+					.list()
+	} 
+
+
+	@ProxyMethod
+	public def reviseFaas( info ) {
+		def retval = [success:0, error:0]
+		try {
+			//info.faas = em.findFaasForRevision(info.faas)
+			def faas = grSvc.initGeneralRevision(info)
+			faas.memoranda = info.memoranda 
+			faas.appraiser = info.appraiser 
+            faas.taxmapper = info.taxmapper 
+            faas.recommender = info.recommender 
+            faas.approver = info.approver 
+            faas.memoranda = info.memoranda
+            faas.effectivityyear = info.newry + 1 
+			faas = faasSvc.createFaas( faas )
+			if (info.autoapprove){
+				faas = faasSvc.approveFaas(faas)
+			}
+			retval.success += 1
+			em_batchgr_log.create(faas)
+			println 'Successfully revised -> ' + faas.rpu.rputype + ' : ' +  faas.prevtdno 
+		}
+		catch ( e ) {
+			retval.error += 1
+			logError( info.faas.objid, info.newry, e ) 
+		}
+		finally{
+			em_items_forrevision.find([objid:info.faas.objid]).delete()
+		}
+		return retval
+	}		
+
+
+	@ProxyMethod
+	public def getBatchGRErrors(  ) {
+		return em_error.where('1=1')
+					.select('objid,newry,faas.tdno,faas.fullpin,faas.owner_name')
+					.orderBy('ry,faas.tdno')
+					.list()
+	}
+
+	@ProxyMethod
+	public def getErrorMessage( error ) {
+		def e = em_error.find([objid:error.objid]).first()
+		if (e ) return e.msg 
+		return ''
+	}
+
+	void logError( faasid, newry, e ) {
+		def sw = null 
+		def pw = null 
+		try {
+			sw = new StringWriter()
+			pw = new PrintWriter(sw)
+			e.printStackTrace( pw)
+
+			def err = [:]
+			err.objid = faasid 
+			err.newry = newry 
+			err.msg = sw.toString()
+
+			em_error.find([objid:faasid]).delete()
+			em_error.create(err)
+		}
+		catch( ex ) {
+			ex.printStackTrace()
+			println 'Unable to Log Error for ' + faasid 
+		}
+		finally{
+			if( sw ) try{ sw.close() } catch( ex ) {}
+			if( pw ) try{ pw.close() } catch( ex ){}
+		}
+	}
+	
+}
+

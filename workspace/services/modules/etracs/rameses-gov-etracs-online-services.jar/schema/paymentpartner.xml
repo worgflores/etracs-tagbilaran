@@ -1,0 +1,14 @@
+<schema adapter="eor">
+	<element tablename="paymentpartner">
+		<field name="objid" primary="true" prefix="PMTPRT"/>
+		<field name="code" required="true" />
+		<field name="name" required="true" />
+		<field name="indexno" required="true" />
+
+		<field name="branch" required="true"/>
+		<field name="contact" required="true"/>
+		<field name="mobileno" required="true"/>
+		<field name="phoneno" required="true"/>
+		<field name="email" required="true"/>
+	</element>
+</schema>	

@@ -1,0 +1,5 @@
+provider=script
+app.host=${gdx.host}
+app.cluster=osiris3
+app.context=gdx
+readTimeout=60000

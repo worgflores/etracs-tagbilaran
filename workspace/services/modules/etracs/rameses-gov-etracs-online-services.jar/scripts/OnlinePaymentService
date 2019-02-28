@@ -1,0 +1,170 @@
+import com.rameses.annotations.*
+import com.rameses.util.*
+import com.rameses.common.*
+
+
+/************************************************
+* This is the one called by the gdx or kiosk
+*************************************************/
+class OnlinePaymentService   {
+
+    @DataContext("eor")
+    def eorEm; 
+
+    @DataContext("eor_paymentorder")
+    def poEm; 
+
+    @DataContext("unpostedpayment")
+    def unpostedpayment_db; 
+
+    @Env 
+    def env; 
+
+    @Service("EORService")
+    def eorSvc;  
+
+    @Service('PersistenceService')
+    def persistenceSvc; 
+
+    private void initEnv() {
+        env.USERID = 'E-PAYMENT'; 
+        env.FULLNAME = 'E-PAYMENT';
+        env.USERNAME = 'E-PAYMENT';
+    }
+
+
+    /***************************************************
+    * This must be overridden by discrminating txntype.
+    ****************************************************/
+    @ProxyMethod
+    public def getBilling( def o ) { 
+        initEnv(); 
+        
+        if(!o.txntype) return [status:1, message:'txntype is required'];
+        return [:];
+    }
+
+    @ProxyMethod
+    public def createPaymentOrder( def o ) {
+        initEnv();       
+
+        if(!o.txntype) return [status:1, message:'txntype is required'];
+        if( !o.info ) 
+            throw new Exception("info is required in the arguments. Please override @Before OnlinePaymentService.createPaymentOrder and pass info");
+
+        def info = o.info; 
+        info.origin = o.origin;  
+        info._schemaname = 'eor_paymentorder'; 
+        def m = persistenceSvc.create( info ); 
+
+        def result = [:];
+        result.status=0
+        result.paymentrefid=m.objid;
+        result.amount=m.amount;
+        result.txntype=m.txntype;
+        result.txntypename=m.txntypename;
+        result.controlno=m.controlno;
+        result.paidby=m.paidby;
+        result.particulars=m.particulars;
+        result.expirydate=m.expirydate;
+
+        result.message=info.message;
+        result.email=info.email;
+        result.mobileno=info.mobileno;
+        result.phoneno=info.phoneno;
+        return result;
+    }
+
+    @ProxyMethod(local=true)
+    public def postPayment( def o ) {
+        initEnv(); 
+
+        if (!o.txntype) return [status:1, message:'txntype is required'];
+
+        def po = poEm.find([ objid: o.paymentrefid ]).first();
+        if (!po) throw new Exception('Payment Order No. ' + o.objid + ' does not exist or has already been processed.')
+
+        if (o.tracedate instanceof String ) {
+            def df = new java.text.SimpleDateFormat("yyyy-MM-dd");
+            o.tracedate = df.parse( o.tracedate );
+        }
+
+        po.paymentrefid = po.objid; 
+        po.partnerid = o.partnerid; 
+        po.tracedate = o.tracedate; 
+        po.traceid = o.traceid;
+
+        def r = null; 
+        def retval = [:]; 
+        boolean pass = false; 
+        try { 
+            r = eorSvc.post( po ); 
+            retval.paymentrefid =  r.paymentrefid;
+            retval.receiptno = r.receiptno;
+            retval.receiptid = r.objid;
+            retval.receiptdate = r.receiptdate; 
+            pass = true; 
+
+        } 
+        catch(Throwable t) { 
+            def m = buildErrorInfo( t ); 
+            println 'payment posting error '+ o.paymentrefid +' caused by: '+ m.errmsg; 
+            m.objid = o.objid; 
+            m.txndate = o.txndate;
+            m.txntype = o.txntype;
+            m.txntypename = o.info?.txntypename; 
+            m.paymentrefid = o.paymentrefid; 
+            m.amount = o.amount; 
+            m.orgcode = o.orgcode;
+            m.partnerid = o.partnerid;
+            m.traceid = o.traceid; 
+            m.tracedate = o.tracedate; 
+            m.refno = o.info?.refno;
+            m.origin = o.info?.origin; 
+            m.paymentorder = po; 
+            unpostedpayment_db.create( m );  
+            retval = null; 
+        } 
+        
+        if ( pass ) { 
+            poEm.find([ objid: po.objid ]).delete(); 
+            unpostedpayment_db.find([ paymentrefid: po.objid ]).delete(); 
+        } 
+        return retval;
+    }
+
+    @ProxyMethod
+    public def getReceipt( def o ) {
+        initEnv();        
+
+        def m = [:];
+        if( o.receiptno ) m.receiptno = o.receiptno;
+        def rc = eorEm.find(m).first(1);
+        if(!rc) {
+            throw new Exception("Receipt " + o + " not found");
+        }
+        return rc;
+    } 
+
+    private def buildErrorInfo( Throwable t ) {
+        def m = [:];  
+        def cause = t; 
+        while (cause != null) {
+            m.errmsg = cause.message; 
+            if ( m.errmsg != null) { 
+                def buff = new java.io.StringWriter();
+                cause.printStackTrace(new java.io.PrintWriter(buff)); 
+                m.errdetail = buff.toString(); 
+            } 
+            cause = cause.cause; 
+        }
+
+        m.errmsg = m.errmsg.toString();
+        if ( m.errdetail == null ) {
+            def buff = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(buff)); 
+            m.errdetail = buff.toString(); 
+        } 
+        return m; 
+    }
+}

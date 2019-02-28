@@ -1,0 +1,6 @@
+provider=script
+app.host=${fileserver.host}
+app.cluster=osiris3
+app.context=fileserver
+readTimeout=30000
+failOnConnectionError=false

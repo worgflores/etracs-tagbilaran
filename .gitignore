@@ -7,5 +7,6 @@ server.log
 /client
 /_client
 custom.old
+*.bak*
 *.bak
 *.lnk

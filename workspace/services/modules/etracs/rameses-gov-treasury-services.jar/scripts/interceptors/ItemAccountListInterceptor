@@ -1,0 +1,90 @@
+import com.rameses.annotations.*;
+
+class ItemAccountListInterceptor {
+
+	@Env
+	def env;
+
+	@Service("OrgService")
+	def orgSvc;
+
+	@DataContext('collectiontype_account')
+	def coltypeAcct_db;	
+
+	@After(pattern="QueryService.getNodeList", eval="#{ args[0]._schemaname == 'itemaccount' }")
+	public def getNodeList(evt) {
+		def result = evt.result;
+		result << [title:'DRAFT', state:'DRAFT'];
+		result << [title:'ACTIVE', state:'ACTIVE'];
+		result << [title:'INACTIVE', state:'INACTIVE'];
+	}
+
+	@Before(pattern="QueryService.getList", eval="#{ args[0]._schemaname == 'itemaccount' && args[0]._tag != 'CASHRECEIPT' }")
+	public void loadList(def evt) {
+		def o = evt.args[0];
+		if( o.node?.state ) {
+			def str = "state = :state";
+			def m = [state : o.node.state];
+			//add to first position of where
+			if( o.where ) {
+				o.where[0] = str + " AND " + o.where[0];	
+				o.where[1].putAll( m );
+			}
+			else {
+				o.where = [str, m];
+			}
+		}
+	}
+
+	@Before(pattern="QueryService.getList", eval="#{ args[0]._schemaname == 'itemaccount' && args[0]._tag == 'CASHRECEIPT' }")
+	public void beforeGetListForCashReceipt(def evt) {
+		def o = evt.args[0];
+		o.has_collection_account = false;
+
+		def str = "";
+		def m = [:];
+
+		if ( o.collectiontype?.objid ) { 
+			def ctaparam = [ collectiontypeid: o.collectiontype?.objid ]; 
+			def cta = coltypeAcct_db.find( ctaparam ).select('objid').first(); 
+			if ( cta ) {
+				o.has_collection_account = true;
+
+				def ctaem = coltypeAcct_db.find( ctaparam ); 
+				def acctids = ctaem.list().collect{ it.account.objid } 
+				if ( acctids ) { 
+					str = " objid IN ('" + acctids.join("','") + "')";
+				}
+			}			
+		} 
+
+		if ( !str ) return;
+
+		if( o.where ) {
+			o.where[0] = str + " AND " + o.where[0];	
+			o.where[1].putAll( m );
+		}
+		else {
+			o.where = [str, m];
+		}
+	}
+
+	@After(pattern="QueryService.getList", eval="#{ args[0]._schemaname == 'itemaccount' && args[0]._tag == 'CASHRECEIPT' }")
+	public void afterGetListForCashReceipt(def evt) {
+		def o = evt.args[0];
+		def result = evt.result;
+
+		if( o.has_collection_account ) {
+			def acList = coltypeAcct_db.find([ collectiontypeid: o.collectiontype.objid ]).list();
+			result.each { a-> 
+				def m = acList.find{  
+					it.account.objid == a.objid 
+				} 
+				if ( m.valuetype ) {
+					a.valuetype = m.valuetype; 
+					a.defaultvalue = m.defaultvalue; 
+				}
+			}
+		}
+	}
+}

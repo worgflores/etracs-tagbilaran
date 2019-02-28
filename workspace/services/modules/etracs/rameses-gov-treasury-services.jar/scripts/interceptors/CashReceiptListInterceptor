@@ -1,0 +1,77 @@
+import com.rameses.annotations.*;
+
+class CashReceiptListInterceptor {
+
+	@Env 
+	def env;
+
+	@After(pattern="QueryService.getNodeList", eval="#{ args[0]._schemaname == 'cashreceipt' }")
+	public void getNodes( evt ) { 
+		def x = evt.args[0];
+		def result = evt.result; 
+		if ( x._tag == 'collector' ) {
+			result << [ id:'unremitted', title: 'Unremitted'];	
+			result << [ id:'delegated', title: 'Delegated'];
+			result << [ id:'remitted', title: 'Remitted'];	
+		} else if ( x._tag == 'subcollector' ) {
+			result << [ id:'unremitted', title: 'Unremitted'];	
+			result << [ id:'remitted', title: 'Remitted']; 
+		} else {
+			result << [ id:'unremitted', title: 'Unremitted'];	
+			result << [ id:'remitted', title: 'Remitted'];	
+		}
+	}
+
+	@Before(pattern="QueryService.getList", eval="#{ args[0]._schemaname == 'cashreceipt' }")
+	public void beforeGetList( evt ) {
+		def o = evt.args[0];
+		if( !o.node?.id ) return;
+
+		def qarr = [];
+		def qmap = [:];
+
+		if ( o._tag == 'collector' ) {
+			qarr << " collector.objid = :userid ";
+			if ( o.node.id == 'unremitted' ) { 
+				qarr << " remittanceid is null ";
+				qarr << " (subcollector.objid is null  or (subcollector.objid is not null and subcollector.remittanceid is not null)) " 
+			} else if ( o.node.id == 'delegated' ) { 
+				qarr << " remittanceid is null and subcollector.objid is not null and subcollector.remittanceid is null "; 
+			} else { 
+				qarr << " remittanceid is not null "; 
+			}
+
+			qmap.userid = env.USERID;
+
+		} else if ( o._tag == 'subcollector' ) {
+			qarr << " subcollector.objid = :userid ";
+			qarr << " subcollector.remittanceid is " + (o.node.id == 'unremitted' ? 'null' : 'not null');
+			qmap.userid = env.USERID;
+
+		} else if ( o.node.id == 'unremitted' ) {
+			qarr << " remittanceid IS NULL ";
+
+		} else if( o.node.id == 'remitted' ){
+			qarr << " remittanceid IS NOT NULL ";
+		}
+
+		def orderbys = [];
+		if ( o.orderBy ) orderbys << o.orderBy;
+
+		if ( o.node?.id.toString().matches('unremitted|delegated')) {
+			orderbys << " receiptdate, receiptno "; 
+		} else { 
+			orderbys << " receiptdate desc, receiptno desc "; 
+		} 
+		o.orderBy = orderbys.join(', '); 
+
+		if( o.where ) {
+			o.where[0] = qarr.join(' AND ') + " AND " + o.where[0];	
+			o.where[1].putAll( qmap );
+		}
+		else {
+			o.where = [qarr.join(' AND '), qmap];
+		}
+	}	
+
+}

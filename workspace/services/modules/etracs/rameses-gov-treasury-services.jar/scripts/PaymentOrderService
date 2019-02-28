@@ -1,0 +1,52 @@
+import com.rameses.annotations.*
+import com.rameses.common.*;
+import com.rameses.util.*;
+
+class PaymentOrderService {
+
+	@Service
+	def self
+
+	@DataContext("paymentorder") 
+	def pmt; 
+	
+	@DataContext("revenueitem") 
+	def revItem; 
+
+	@Service("DateService") 
+	def dtSvc; 
+
+	@Service('OrgService')
+	def orgSvc 
+
+	@Service('PersistenceService')
+	def persistenceSvc; 
+
+	@ProxyMethod
+	public def create(def entity) {	
+		entity._schemaname = 'paymentorder';
+		persistenceSvc.create(entity);	
+	} 
+
+	/***********************************
+	* This is called during receipts
+	************************************/
+	@ProxyMethod
+	public void close(def po) {
+		pmt.delete( po );
+	}
+
+	/***********************************
+	* This is called during receipts
+	************************************/
+	@ProxyMethod
+	public def open(def po) {
+		po._schemaname = 'paymentorder';
+		return persistenceSvc.read(po);	
+	}
+
+	@ProxyMethod
+	public void removeEntity(def po) {
+		pmt.find([ objid: po.objid ]).delete();
+	}	
+}

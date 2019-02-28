@@ -1,0 +1,150 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import java.rmi.server.*;
+
+class CollectionVoucherService  {
+
+	@Env
+	def env;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@Service("CashBreakdownSummaryService")
+	def cashBreakdownSvc;
+
+	@Service("SequenceService")
+	def seqSvc;
+
+	@Service('ControlService') 
+	def controlSvc;	
+
+	@Service("Var")
+	def var;	
+
+	@DataContext("remittance")
+	def remEm;
+
+	@DataContext("remittance_fund")
+	def remFundEm;
+
+	@DataContext("collectionvoucher")
+	def cvEm;
+
+	@DataContext("collectionvoucher_fund")
+	def cvFundEm;
+
+	@Service("JevService")
+	def jevSvc;	
+
+	@ProxyMethod
+	public def create( def pp ) {
+		if ( !pp.ids ) throw new Exception('Please specify at least one remittance to liquidate'); 
+
+		def wheres = []; 
+		wheres << "objid IN ('"+ pp.ids.join("','") +"')"; 
+		wheres << "state = 'POSTED' AND collectionvoucherid IS NULL"; 
+
+		//search if there is at least one for posting
+		def cnt = remEm.where( wheres.join(' AND ')).select("x:{COUNT(*)}").val();
+		if ( cnt == 0 ) throw new Exception("There are no remittances found that are POSTED within this date"); 
+
+		def m = [:];
+		m.dtposted = dateSvc.getServerDate();
+		m.controlno = 'TMP-LIQ-'+env.USERID; 
+		m.controldate = new java.sql.Date( m.dtposted.time );  
+		m.state = "OPEN";
+		m.amount = 0;
+		m.totalcash = 0;
+		m.totalcheck = 0;
+		m.totalcr = 0;
+		m.cashbreakdown = [];
+		m.liquidatingofficer = [objid:env.USERID, name: env.FULLNAME, title: env.JOBTITLE ]; 
+		m = cvEm.create( m );
+
+		//update the collection voucher id for each remittance
+		remEm.where( wheres.join(' AND ')).update([ collectionvoucherid: m.objid ]);
+
+		def z = [collectionvoucherid: m.objid]
+		cvEm.insertCollectionVoucherFund( z );
+
+		//update cash breakdown totals in each collection fund
+		def lfList = cvFundEm.find( [ parentid: m.objid ] ).list();
+
+		lfList.each {
+			def cc = [cvid: it.parentid, fundid: it.fund.objid]
+			def subList = remFundEm.select("cashbreakdown").where( "remittance.collectionvoucherid=:cvid AND fund.objid=:fundid" , cc).list()*.cashbreakdown;
+			def bd = cashBreakdownSvc.summarize( subList );
+			cvFundEm.find( [objid: it.objid] ).update( [cashbreakdown: bd ]);
+		}
+
+		//totals in collection
+		def u = [cashbreakdown: [], totalcash:0, totalcheck:0, totalcr: 0, amount:0 ];
+		def remList = remEm.find( z ).list().each {
+			u.amount += it.amount;
+			u.totalcash += it.totalcash;
+			u.totalcheck += it.totalcheck;
+			u.totalcr += it.totalcr;
+			u.cashbreakdown << it.cashbreakdown;
+		} 
+
+		// there must be a cash or check amount, if result is zero then this is not valid 
+		if ((u.totalcash + u.totalcheck) == 0 ) throw new Exception("Total Cash must not be zero"); 
+
+		u.cashbreakdown = cashBreakdownSvc.summarize( u.cashbreakdown );
+		cvEm.find( [objid: m.objid ] ).update( u );
+		return m;
+	}
+
+	@ProxyMethod 
+	public def post( p ) { 
+		def m = [ state: 'POSTED']; 
+		m.dtposted = dateSvc.getServerDate(); 
+
+		if ( p.controlno.toString().toUpperCase().startsWith("TMP-")) {
+			def txncode = [ "LIQ", env.TXNCODE, env.ORGTXNCODE ].findAll{( it )}.join("-");
+			m.controlno = controlSvc.formatTxnno([ txncode: txncode, txndate: m.dtposted, format: var.liquidation_format, sequenceid_format: var.liquidation_sequenceid_format ]); 
+
+			cvFundEm.find([ parentid: p.objid ]).select('objid,fund.code').list().each{ 
+				def txnno = m.controlno + (it.fund?.code ? ('-'+it.fund.code) : ""); 
+				cvFundEm.find([ objid: it.objid ]).update([ controlno: txnno ]); 
+			} 
+		} 
+
+		cvEm.find([ objid: p.objid ]).update( m ); 	
+
+		//post to jev
+		def ref = [refid:p.objid,refno:m.controlno,reftype:'collectionvoucher', refdate:p.controldate, txntype:'COLLECTION'];
+
+		def jevBatch = [:];
+		jevBatch.ref = ref;
+		jevBatch.funds = [];
+		jevBatch.items = [];
+
+		cvFundEm.find([ parentid: p.objid ]).select('objid,fund.*,amount').list().each{ 
+			jevBatch.funds << [ objid: it.objid, refno:m.controlno, fund: it.fund, amount: it.amount  ];	 
+		} 
+
+
+		def pm = [collectionvoucherid: p.objid ];
+
+		jevBatch.items.addAll( cvEm.getCashLedgerItems( pm ) );
+		jevBatch.items.addAll( cvEm.getBankAccountLedgerItems( pm ) );
+		jevBatch.items.addAll( cvEm.getIncomeLedgerItems( pm ) );
+		jevBatch.items.addAll( cvEm.getPayableLedgerItems( pm ) );
+		jevBatch.items.each{
+			it.acctid = it.itemacctid; 
+			it.acctcode = it.itemacctcode; 
+			it.acctname = it.itemacctname;
+		}
+		jevSvc.createBatch( jevBatch );
+
+		return m; 
+	}	
+
+
+	@ProxyMethod 
+	public def getReportData( params ) {
+		return params; 
+	}
+}
