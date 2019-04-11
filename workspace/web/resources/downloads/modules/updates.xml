@@ -56,14 +56,17 @@ ws.host=localhost:8060
 	<module file="rameses-client-notification2.jar" version="2.50"/>
 	<module file="rameses-etracs-main.jar" version="2.54"/>
 	<module file="rameses-treasury-common.jar" version="2.54"/>
-	<module file="rameses-gov-epayment.jar" version="2.58"/>
-	<module file="rameses-gov-etracs-city.jar" version="2.50"/>
 	<module file="rameses-gov-etracs-entity.jar" version="2.54"/>
 	<module file="rameses-gov-etracs-signatory-template.jar" version="2.50"/>
 	<module file="rameses-gov-etracs-tools.jar" version="2.54"/>
+	<module file="rameses-gov-lgu.jar" version="2.50"/>
 	<module file="rameses-gov-lgu-treasury.jar" version="2.54"/>
 	<module file="rameses-gov-treasury.jar" version="2.66"/>
 	<module file="rameses-gov-treasury-report.jar" version="2.54"/>
+
+	<!-- EPayment libraries -->
+	<module file="rameses-gov-epayment.jar" version="2.59"/>
+	<module file="rameses-gov-epayment-report.jar" version="2.50"/>
 
 	<!-- BPLS libraries -->
 	<!-- <module file="rameses-etracs-bpls-ceo.jar" version="1.2"/> -->
