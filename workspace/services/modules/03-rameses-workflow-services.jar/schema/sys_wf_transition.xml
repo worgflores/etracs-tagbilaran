@@ -7,10 +7,10 @@
 		<field name="action"/>
 		<field name="idx" />
 		<field name="eval" />
-		<complex name="properties" serializer="default" type="object"/>
+		<complex name="properties" serializer="default" type="object" required="false"/>
 		<field name="permission" />
 		<field name="caption"/>
-		<complex name="ui" serializer="default"/>
+		<complex name="ui" serializer="default" required="false"/>
 	</element>	
 
 </schema>	

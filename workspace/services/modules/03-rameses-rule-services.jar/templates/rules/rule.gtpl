@@ -151,7 +151,7 @@ rule "${action.actiondef.name}_${i}_${j}"
 	then
 		Map bindings = rv.getBindings();
 		Map params = rv.getParams();
-		params.put( "amount", (new ActionExpression("${entry.value}", bindings)) );	
+		params.put( "${param.actiondefparam.name}", (new ActionExpression("${entry.value}", bindings)) );	
 		<%String actionName = action.actiondef.actionname%> 
 		action.execute( "${actionName}",params, drools);
 end

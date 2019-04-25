@@ -5,6 +5,9 @@ class BatchCaptureCollectionListInterceptor {
 	@Env 
 	def env; 
 
+	@DataContext('batchcapture_collection_entry') 
+	def bcce_db; 
+
 	@After(pattern="QueryService.getNodeList", eval="#{args[0]._schemaname == 'batchcapture_collection'}")
 	public void afterGetNodeList( evt ) { 
 		def p = evt.args[0];
@@ -16,7 +19,7 @@ class BatchCaptureCollectionListInterceptor {
 	}
 
 	@Before(pattern="QueryService.getList", eval="#{args[0]._schemaname == 'batchcapture_collection'}")
-	public void afterGetList( evt ) {
+	public void beforeGetList( evt ) {
 		def param = evt.args[0];
 		def qarr = [];
 		def qmap = [:]; 
@@ -26,20 +29,23 @@ class BatchCaptureCollectionListInterceptor {
 		}
 
 		def tag = param._tag.toString(); 
-		if ( tag == 'collector' ) {
-			qarr << " collector.objid = :userid "; 
-			qmap.userid = env.USERID; 
-
-		} else if ( tag == 'subcollector' ) {
+		if ( tag == 'shared' ) {
+			// do nothing 
+		}
+		else if ( tag == 'subcollector' ) {
 			qarr << " capturedby.objid = :userid "; 
 			qarr << " capturedby.objid <> collector.objid ";
 			qmap.userid = env.USERID; 
 		} 
-
-		if ( !(env.ORGROOT == 1)) { 
-			qarr << " org.objid = :orgid "; 
-			qmap.orgid = env.ORGID; 
+		else {
+			qarr << " collector.objid = :userid "; 
+			qmap.userid = env.USERID; 
 		} 
+
+		// if ( !(env.ORGROOT == 1)) { 
+		// 	qarr << " org.objid = :orgid "; 
+		// 	qmap.orgid = env.ORGID; 
+		// } 
 
 		def qstr = qarr.join(' AND '); 
 		if ( param.where ) { 
@@ -50,7 +56,7 @@ class BatchCaptureCollectionListInterceptor {
 		} 
 
 		def orderbys = []; 
-		if ( param.node?.state.toString() != 'DRAFT' ) { 
+		if ( !param.node?.state.toString().matches('DRAFT|FORPOSTING')) { 
 			orderbys << " txndate desc ";
 		}
 		if ( param.orderBy ) { 
@@ -59,6 +65,16 @@ class BatchCaptureCollectionListInterceptor {
 
 		if ( orderbys ) { 
 			param.orderBy = orderbys.join(', '); 
+		} 
+	} 
+
+	@After(pattern="QueryService.getList", eval="#{args[0]._schemaname == 'batchcapture_collection'}")
+	public void afterGetList( evt ) {
+		evt.result.each{
+			def fldnames = 'minseries:{MIN(series)}, maxseries:{MAX(series)}'; 
+			def bcce = bcce_db.find([ parentid: it.objid ]).select( fldnames ).first(); 
+			if ( bcce?.minseries ) it.startseries = bcce.minseries; 
+			if ( bcce?.maxseries ) it.currentseries = bcce.maxseries+1; 
 		} 
 	} 
 }

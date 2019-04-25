@@ -27,42 +27,44 @@ ws.host=localhost:8060
 	<module file="lib/commons-net-3.5.jar" version="1.0"/>
 	 
 	<!-- core libraries -->
-	<module file="core/osiris2-client-themes.jar" version="2.54"/>
-	<module file="core/osiris2-client-ui.jar" version="2.54"/>
-	<module file="core/osiris2-framework.jar" version="2.54"/>
-	<module file="core/osiris2-report.jar" version="2.54"/>
-	<module file="core/osiris2-draw.jar" version="2.54"/>
-	<module file="core/rameses-client-ui.jar" version="2.54"/>
-	<module file="core/rameses-client-ui-bio.jar" version="2.54"/>
-	<module file="core/rameses-common2.jar" version="2.54"/>
-	<module file="core/rameses-custom-impl.jar" version="2.54"/>
-	<module file="core/rameses-jdbc16.jar" version="2.54"/>
-	<module file="core/rameses-seti.jar" version="2.54"/>
+	<module file="core/osiris2-client-themes.jar" version="2.55"/>
+	<module file="core/osiris2-client-ui.jar" version="2.55"/>
+	<module file="core/osiris2-draw.jar" version="2.55"/>
+	<module file="core/osiris2-framework.jar" version="2.55"/>
+	<module file="core/osiris2-report.jar" version="2.55"/>
+	<module file="core/rameses-client-ui.jar" version="2.55"/>
+	<module file="core/rameses-client-ui-bio.jar" version="2.55"/>
+	<module file="core/rameses-common2.jar" version="2.55"/>
+	<module file="core/rameses-custom-impl.jar" version="2.55"/>
+	<module file="core/rameses-jdbc16.jar" version="2.55"/>
+	<module file="core/rameses-seti.jar" version="2.55"/>
  
 	<!-- shared libraries -->
-	<module file="shared/rameses-enterprise-financial.jar" version="2.55"/>
-	<module file="shared/client-system.jar" version="2.54"/>
-	<module file="shared/client-ui-extended.jar" version="2.54"/>
-	<module file="shared/rameses-client-menu.jar" version="2.54"/>
-	<module file="shared/rameses-client-report.jar" version="2.54"/>
-	<module file="shared/rameses-enterprise.jar" version="2.54"/>
-	
-	<module file="shared/rameses-enterprise-admin.jar" version="2.54"/>
-	<module file="shared/rameses-enterprise-entity.jar" version="2.54"/>
-	<module file="shared/rameses-rules-mgmt.jar" version="2.54"/>
-	<module file="shared/rameses-workflow-mgmt.jar" version="2.54"/>
+	<module file="shared/client-system.jar" version="2.55"/>
+	<module file="shared/client-ui-extended.jar" version="2.55"/>
+	<module file="shared/rameses-client-menu.jar" version="2.55"/>
+	<module file="shared/rameses-client-report.jar" version="2.55"/>
+	<module file="shared/rameses-rules-mgmt.jar" version="2.55"/>
+	<module file="shared/rameses-workflow-mgmt.jar" version="2.55"/>
+
+	<module file="shared/rameses-enterprise.jar" version="2.55"/>
+	<module file="shared/rameses-enterprise-admin.jar" version="2.55"/>
+	<module file="shared/rameses-enterprise-entity.jar" version="2.55"/>
+	<module file="shared/rameses-enterprise-financial.jar" version="2.56"/>
  	
 	<!-- main app libraries -->
-	<module file="rameses-client-notification2.jar" version="2.50"/>
-	<module file="rameses-etracs-main.jar" version="2.54"/>
-	<module file="rameses-treasury-common.jar" version="2.54"/>
-	<module file="rameses-gov-etracs-entity.jar" version="2.54"/>
+	<module file="rameses-treasury-common.jar" version="2.55"/>
+	<module file="rameses-client-notification2.jar" version="2.55"/>
+	<module file="rameses-etracs-main.jar" version="2.55"/>
+	<module file="rameses-gov-depositslip.jar" version="2.55"/>
+	<module file="rameses-gov-etracs-entity.jar" version="2.55"/>
 	<module file="rameses-gov-etracs-signatory-template.jar" version="2.50"/>
-	<module file="rameses-gov-etracs-tools.jar" version="2.54"/>
-	<module file="rameses-gov-lgu.jar" version="2.50"/>
-	<module file="rameses-gov-lgu-treasury.jar" version="2.54"/>
-	<module file="rameses-gov-treasury.jar" version="2.66"/>
-	<module file="rameses-gov-treasury-report.jar" version="2.54"/>
+	<module file="rameses-gov-etracs-tools.jar" version="2.55"/>
+	<module file="rameses-gov-lgu.jar" version="2.55"/>
+	<module file="rameses-gov-lgu-treasury.jar" version="2.55"/>
+	<module file="rameses-gov-treasury.jar" version="2.67"/>
+	<module file="rameses-gov-treasury-report.jar" version="2.55"/>
+	<module file="rameses-gov-treasury-tool.jar" version="2.55"/>
 
 	<!-- EPayment libraries -->
 	<module file="rameses-gov-epayment.jar" version="2.59"/>

@@ -1,10 +1,10 @@
 <schema>
 
 	<element tablename="sys_ruleset">
-		<field name="name" primary="true" editable="false"/>
+		<field name="name" primary="true" editable="false" searchable="true" visible="true"/>
 		<field name="title" required="true" searchable="true" indexed="true"/>
 		<field name="packagename" required="true"/>
-		<field name="domain" required="true" indexed="true"/>
+		<field name="domain" required="true" indexed="true" searchable="true"/>
 		<field name="role" required="true" indexed="true"/>
 		<field name="permission" />
 

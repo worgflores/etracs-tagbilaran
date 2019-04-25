@@ -104,7 +104,8 @@ class RuleActionDefService  {
 			throw new Exception("Action Class must not contain spaces");
 
 		def m = actionDefEm.find( [objid: o.newid ] ).first();
-		if( !m) throw new Exception("Class definition does not exist. Please make sure the target class is updated before proceeding");					
+
+		if( !m) throw new Exception("Class definition " + o.newid + " does not exist. Please make sure the target class is updated before proceeding");					
 		if( m.objid != o.newid) throw new Exception("Class must match exact objid");
 
 		actionDefEm.copyRulesetActionDefs(o);

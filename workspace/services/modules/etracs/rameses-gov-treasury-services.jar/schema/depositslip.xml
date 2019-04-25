@@ -2,7 +2,7 @@
 	
 	<element tablename="depositslip">
 		<field name="objid" primary="true" prefix="BNKDEP"/>
-		<field name="depositvoucherid" required="true"/> 
+		<field name="depositvoucherfundid" required="true"/> 
 
 		<field name="state" required="true" defaultvalue="DRAFT"/> 
 		<field name="createdby_objid" required="true"/> 
@@ -11,7 +11,7 @@
 		<field name="depositdate" required="true" type="date"/>
 		<field name="dtcreated" required="true" type="timestamp"/>
 
-		<complex name="bankaccount" ref="bankaccount" jointype="many-to-one" includefields="code,title,bank.name,bank.objid,bank.depositsliphandler" required="false">
+		<complex name="bankaccount" ref="bankaccount" jointype="many-to-one" includefields="code,title,bank.*" required="false">
 			<key field="bankacctid" target="objid"/>
 		</complex>
 		<field name="amount" required="true"  type="decimal"/> 
@@ -23,6 +23,10 @@
 
 		<field name="deposittype" required="true"/>
 		<field name="checktype" /> 
+
+		<complex name="depositvoucherfund" ref="depositvoucher_fund" jointype="many-to-one" includefields="objid,parentid">
+			<key field="depositvoucherfundid" target="objid" />
+		</complex>	
 
 	</element>
 

@@ -161,13 +161,10 @@ class WorkflowGUIService {
 
         wf.create(o);
         nodes.each {
-           wfNode.create( it );
+            wfNode.create( it );
         }
         transitions.each {
             wfTransition.create(it);
         }
-        
     }
-
-
 }

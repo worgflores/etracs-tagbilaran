@@ -34,7 +34,8 @@ SET actiondefparam_objid = (
 	FROM sys_rule_actiondef_param s1, sys_rule_actiondef_param s2
 	WHERE s1.objid = sys_rule_action_param.actiondefparam_objid 
 	AND s1.name = s2.name 
-	AND s1.parentid = $P{oldid} AND s2.parentid = $P{newid}
+	AND s1.parentid = $P{oldid} AND s2.parentid = $P{newid} 
+	LIMIT 1 
 )
 WHERE 
 actiondefparam_objid IN (

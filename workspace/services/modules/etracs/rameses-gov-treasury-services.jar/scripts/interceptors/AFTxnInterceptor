@@ -33,6 +33,9 @@ class AFTxnInterceptor {
 	@DataContext("aftxn")
 	def aftxn;
 
+	@DataContext("sys_user")
+	def user_db;
+
 	@Env
 	def env;
 
@@ -60,6 +63,14 @@ class AFTxnInterceptor {
 	@After(pattern="PersistenceService.read", eval="#{ args[0]._schemaname == 'aftxn' }")
 	public void afterOpen( evt ) { 
 		def result = evt.result;
+
+		if ( result.user?.objid ) {
+			def user = user_db.find([ objid: result.user?.objid ]).select('objid,jobtitle').first(); 
+			if ( user ) {
+				result.user.title = user.jobtitle; 
+			}
+		}
+
 		def scols1 = "parent.batchno,parent.prefix,parent.suffix"
 		def scols2 = ",startseries:{MIN(parent.startseries)},endseries:{MAX(parent.endseries)},startstub:{MIN(parent.stubno)},endstub:{MAX(parent.stubno)}"; 
 		result.items.each { r->
@@ -81,12 +92,18 @@ class AFTxnInterceptor {
 	public void beforeRemoveEntity( evt ) { 
 		def param = evt.args[0]; 
 		if ( !param?.objid ) return; 
+		def cnt = afcd.find([ aftxnid: param.objid ]).select("cnt:{COUNT(*)}").val();
+		if( cnt > 0 )
+			throw new Exception("Cannot remove this transaction. Please revert the accountable forms issued first");
 
+		//this should not matter anymore.	
+		/*
 		def m = [_schemaname: 'af_control_detail'];
 		afcd.find([ aftxnid: param.objid ]).select('objid').list().each{
 			m.putAll( it ); 
 			persistSvc.removeEntity( m ); 
 		} 
+		*/
 	} 
 
 
@@ -94,9 +111,9 @@ class AFTxnInterceptor {
 	public void afterCreateForward( evt ) { 
 		def res = evt.result; 
 		aftxn.find([ objid: res.objid ]).update([ state: 'POSTED']); 
-
 		def form = res.form;
 		def afunit = form.afunit;
+
 		res.items.each{ a-> 
 			aftxnItem.find([ objid: a.objid ]).update([ qtyserved: a.qty ]); 
 
@@ -139,7 +156,7 @@ class AFTxnInterceptor {
 		}
 	} 
 
-	@After(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'aftxn' && args[0].txntype.toString().matches('TRANSFER|RETURN') }")
+	@After(pattern="PersistenceService.create", eval="#{ args[0]._schemaname == 'aftxn' && args[0].txntype.toString().matches('TRANSFER|RETURN|MANUAL_ISSUE') }")
 	public void afterTransferOrReturn( evt ) { 
 		def res = evt.result; 
 		aftxn.find([ objid: res.objid ]).update([ state: 'POSTED' ]); 
@@ -163,9 +180,14 @@ class AFTxnInterceptor {
 			def errkey = 'AF#'+ afc.afid +' Stub#'+ afc.stubno; 
 			if ( afc.active.toString() != '0' ) throw new Exception(errkey +' must not be active'); 
 			if ( afc.currentseries > afc.endseries ) throw new Exception(errkey +' is already consumed'); 
-			if ( afc.state.toString() != 'ISSUED' ) throw new Exception(errkey +' must be in ISSUED state'); 
-			if ( afc.assignee.objid != afc.owner.objid ) throw new Exception(errkey +' assignee must be the same as the owner'); 
 
+			if( res.txntype != 'MANUAL_ISSUE') {
+				if ( afc.state.toString() != 'ISSUED' ) throw new Exception(errkey +' must be in ISSUED state'); 
+				if ( afc.assignee.objid != afc.owner.objid ) throw new Exception(errkey +' assignee must be the same as the owner'); 
+			}
+			else {
+				if(afc.state.toString() != 'OPEN' )  throw new Exception(errkey +' must be in OPEN state');  
+			}
 			afcontrol.find([ objid: it ]).update([ owner: owner, assignee: assignee, lockid:'{NULL}' ]); 
 		}
 
@@ -186,6 +208,7 @@ class AFTxnInterceptor {
 			ref.respcenter = res.respcenter;
 			afInvSvc.add( ref, res.afitems[idx] );
 		} 
+
 	} 
 
 }

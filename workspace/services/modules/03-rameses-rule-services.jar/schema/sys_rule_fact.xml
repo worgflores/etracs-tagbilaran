@@ -21,7 +21,7 @@
 		</complex>	
 
 
-		<field name="updated" expr="CASE WHEN objid = factclass THEN true ELSE false END" type="checkbox"/>
+		<field name="updated" expr="CASE WHEN objid = factclass THEN 1 ELSE 0 END" type="checkbox"/>
 	</element>	
 </schema>	
 

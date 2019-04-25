@@ -1,5 +1,7 @@
 .osiris_pid
 .shutdown_pid
+.DS_Store
+._.DS_Store
 tmp
 temp
 bak

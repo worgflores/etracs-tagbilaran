@@ -19,6 +19,18 @@ class RuleMigrationService {
 	@DataContext('sys_ruleset_actiondef')
 	def rsactiondefdb;
 
+	@DataContext("sys_rule_fact")
+	def factEm;
+
+	@Service("RuleFactService")
+	def factSvc;
+
+	@DataContext("sys_rule_actiondef")
+	def actionDefEm;
+
+	@Service("RuleActionDefService")
+	def actionDefSvc;
+
 	@ProxyMethod
 	public def downloadDefByRuleset( def p ) {
 		if(!p.ruleset) throw new Exception("Please add ruleset in parameter");
@@ -79,19 +91,54 @@ class RuleMigrationService {
 		return pkg;
 	}
 	
+	def refactorFacts( def factClass ) {
+		if(!factClass) return [];
+		def itemList = [];
+		factEm.find([factclass: factClass]).list().each {
+			def tmpId = "FACT" + new UID();
+			itemList << tmpId;
+			factSvc.refactor( [oldid: it.objid , newid: tmpId] );
+		}
+		return itemList;
+	}
+
+	def refactorActionDefs( def actionClass ) {
+		if(!actionClass) return [];
+		def itemList = [];
+		actionDefEm.find([actionclass: actionClass]).list().each {
+			def tmpId = "ACTIONDEF" + new UID();
+			itemList << tmpId;
+			actionDefSvc.refactor( [oldid: it.objid , newid: tmpId] );
+		}
+		return itemList;
+	}
+
 	@ProxyMethod
 	public void uploadDef( def pkg ) {
 		for( x in pkg.facts) {
+			def ids = refactorFacts(x.factclass);
+
 			target.save( x, "fact" );
 			for( f in x.fields )  {
 				target.save( f, "fact_field" );
 			}	
+
+			ids?.each { xxx->
+				factSvc.merge([oldid: xxx, newid:x.factclass]);
+			}
 		} 	
 		for( y in pkg.actiondefs) {
+			def ids = refactorActionDefs( y.actionclass );
+
 			target.save( y, "actiondef" );
-			for( x in y.params ){
-				target.save( x, "actiondef_param" );
+			for( y1 in y.params ){
+				target.save( y1, "actiondef_param" );
 			}
+
+			ids?.each { xxx->
+				actionDefSvc.merge([oldid: xxx, newid:y.actionclass]);
+			}
+
 		} 	
 		for( rs in pkg.rulesets ) {
 			//save rulesets, rulegroups, rulesetfacts, rulesetactiondefs

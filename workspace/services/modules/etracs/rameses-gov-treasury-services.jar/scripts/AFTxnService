@@ -65,6 +65,7 @@ class AFTxnService  {
 		
 		def afunit = afi.afunit;
 
+		int interval = (!afunit.interval) ? 1 : afunit.interval;
 		int len = (afunit.serieslength ? afunit.serieslength : 10);	
 		int stubno = o.startstub; 
  		int starter = (o.startseries ? Integer.parseInt( o.startseries ) : 0);
@@ -76,7 +77,7 @@ class AFTxnService  {
 			afc.afunit = afi.afunit;
 			if( afunit.formtype == 'serial' ) {				
 				afc.startseries = starter;
-				afc.endseries = starter + afunit.qty - 1;
+				afc.endseries = starter + (afunit.qty * interval) - 1;
 				starter = afc.endseries + 1;
 			}
 			else {
@@ -114,42 +115,32 @@ class AFTxnService  {
 	//remove batch is only applicable for PURCHASE_RECEIPT,BEGIN_BALANCE AND FORWARD
 	@ProxyMethod
 	public void removeBatch( def o ) { 
-		if( !o.txntype.matches('PURCHASE_RECEIPT|BEGIN_BALANCE|FORWARD|TRANSFER|RETURN' )) 
+		if( !o.txntype.matches('PURCHASE_RECEIPT|BEGIN_BALANCE')) 
 			throw new Exception( "AF Remove Batch Entry is only applicable for PURCHASE_RECEIPT, BEGIN_BALANCE, FORWARD, TRANSFER or RETURN"); 
 
-		if ( o.txntype.matches('TRANSFER|RETURN')) {
-			def p = [ aftxnitemid: o.aftxnitemid, batchno: o.batchno ];
-			afControl.where( "currentdetail.aftxnitemid = :aftxnitemid AND batchno = :batchno" , p ).list().each{ 
-				persistSvc.removeEntity([ _schemaname: 'af_control_detail', objid: it.currentdetail.objid ]); 
-				def afc = afControl.find([ objid: it.objid ]).first();
-				def upd = [:]; 
-				upd.state = "{currentdetail.statetype.poststate}";
-				upd.owner = [ objid: "{currentdetail.issuedto.objid}",  name: "{currentdetail.issuedto.name}" ];
-				upd.assignee = [ objid: "{currentdetail.issuedto.objid}",  name: "{currentdetail.issuedto.name}" ];
-				upd.respcenter = [ objid: "{currentdetail.respcenter.objid}",  name: "{currentdetail.respcenter.name}" ];
-				upd.lockid = "{NULL}";
-				afControl.where( "currentdetail.objid = :afdid", [ afdid: afc.currentdetail.objid ]).update( upd );
-			} 
+		def p = [ aftxnitemid: o.aftxnitemid, batchno: o.batchno ];
+		def afclist = afControl.where( "currentdetail.aftxnitemid = :aftxnitemid AND batchno = :batchno" , p ).list(); 
+		if ( !afclist ) throw new Exception('failed to locate AF Control with batch#'+ p.batchno); 
 
-			aftxnItem.find([ objid: o.aftxnitemid ]).update([ qtyserved: 0 ]);  
-			// exit immediately 
-			return; 
+		def u = [state:'DELETE', currentdetailid:'{NULL}'];
+		afclist.each{ a-> 
+			afControl.find([ objid: a.objid ]).update( u );
+			afControlDetail.find([ objid: a.currentdetailid ]).delete(); 
+
+			def x = afControlDetail.find([ controlid: a.objid ]).select('objid').orderBy('refdate desc, txndate desc, indexno desc').first(); 
+			if ( x?.objid ) {
+				afControl.find([ objid: a.objid ]).update([ currentdetailid: x.objid ]);
+			}
+			afControl.find([ objid: a.objid ]).delete(); 
 		}
 
 
-		def p = [ aftxnitemid: o.aftxnitemid, batchno: o.batchno ];
-		def u = [state:'DELETE', currentdetailid: '{currentdetail.prevdetailid}']
-		afControl.where( "currentdetail.aftxnitemid = :aftxnitemid AND batchno = :batchno" , p ).update( u );
-
 		def ws = "aftxnitemid = :aftxnitemid AND parent.batchno = :batchno"
-		int qty = afControlDetail.where(ws, p ).select("count:{COUNT(objid)}").val();
-		afControlDetail.where( ws, p ).delete();
-		afControl.where("state = 'DELETE'" ).delete();
+		int qty = afclist.size(); 
 
 		//update batchno for afcontrols 
 		afControl.where( "currentdetail.aftxnitemid=:aftxnitemid AND batchno > :batchno",p ).update( [batchno: "{batchno - 1}"] );
-
-		aftxnItem.find( [objid: o.aftxnitemid] ).update( [qtyserved: "{qtyserved - :qty}"], [qty: qty] ); 
+		aftxnItem.find([ objid: o.aftxnitemid ]).update([ qtyserved: "{qtyserved - :qty}"], [qty: qty] ); 
 	}	
 
 	@ProxyMethod
@@ -213,6 +204,8 @@ class AFTxnService  {
 		def txndate = dateSvc.getServerDate();
 
 		def afi = aftxnItem.find([objid: o.aftxnitemid ]).select("objid,qtyserved,qty,txntype,afid:{item.objid},unit,parent.*").first();
+		if( (afi.qtyserved+o.qty) > afi.qty )
+			throw new Exception("Qty served must be less than qty requested");
 
 		//lookup allocation based on the resp. center defined in the allocation
 		def alloc = null;
@@ -233,7 +226,7 @@ class AFTxnService  {
         ref.issueto = afi.parent.issueto;
         ref.respcenter = afi.parent.respcenter;
 
-		int qty = afi.qty - afi.qtyserved;
+		int qty = o.qty;
 		def remarks = afi.txntype;
 		def sbuff = new StringBuilder();
 		def p = [:];
@@ -244,21 +237,24 @@ class AFTxnService  {
 			sbuff.append(  " AND allocid =:allocid " );
 			p.allocid = alloc.objid;
 		}
-		def list = afControl.select('objid,startseries,currentseries,endseries,prevdetailid').where( sbuff.toString(), p ).orderBy('dtfiled,batchno,stubno').limit( qty ).list();
-		if(!list)
-			throw new Exception("No available stock for " + p.afid + " " + p.unit);		
-		list.each {
-			afInvSvc.add( ref, it );
+
+		def list = afControl.select('objid,startseries,currentseries,endseries,prevdetailid').where( sbuff.toString(), p ).orderBy('dtfiled,startseries,stubno').limit( qty ).list();
+		if ( !list ) throw new Exception("No available stock for " + p.afid + " " + p.unit);	
+		if( list.size() != qty )
+			throw new Exception("Not enough stock to issue");
+
+		list.each { itm-> 
+			afInvSvc.add( ref, itm );
 		}
-		aftxnItem.find([objid: afi.objid]).update( [qtyserved: '{qtyserved + :qty}'], [qty: list.size() ] );
+		aftxnItem.find([objid: afi.objid]).update( [qtyserved: '{qtyserved + :qty}'], [qty: qty ] );
 	}	
 
 
     @ProxyMethod
 	public def post( def o ) {
 		def ar = aftxn.find([ objid: o.objid ]).first(1);
-		def z = ar.items.find{ it.qtyserved != it.qty } 
-		if ( z ) throw new Exception("All qty served must be equal to qty");	
+		if ( ar.items.sum{ it.qtyserved } == 0 ) 
+			throw new Exception("There must be at least one qty issued");	
 
 		def  u = [:];
 		u.state = "{currentdetail.statetype.poststate}";

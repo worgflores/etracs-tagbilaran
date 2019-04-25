@@ -1,36 +1,34 @@
 <schema>
 
 	<element tablename="creditmemo" >
-		<field name="objid" primary="true" prefix="CM" />
-		<field name="state" required="true" />
-		<field name="controlno" required="true" />
-		<field name="payer_objid" />
-		<field name="payer_name" required="true" searchable="true"/>
+		<field name="objid" primary="true" prefix="CR"/>
+		<field name="state" required="true" defaultValue="OPEN"/>
+		<field name="controlno" caption="Control No" required="true" />
+		<field name="payer_objid" required="true" />
+		<field name="payer_name" required="true" caption="Payer Name"/>
+		<field name="payer_address_objid" required="true" />		
 		<field name="payer_address_text" required="true" />
-		<field name="refdate" required="true" type="date" />
-		<field name="refno" required="true" searchable="true"/>
-		<field name="amount" required="true" type="decimal" />
+		<field name="refdate" required="true" />
+		<field name="refno" required="true" />
+		<field name="amount" required="true" type="decimal" caption="Amount"/>
 		<field name="particulars"  required="true"/>
 		<field name="bankaccount_objid" required="true"/>
-		<field name="type" />
-		<field name="dtissued" required="true" />
-		<field name="issuedby_objid"  />
-		<field name="issuedby_name"  />
+		<field name="bankaccount_code" required="true"/>
+		<field name="bankaccount_title"  required="true"/>
 
-		<field name="receiptid"  />
-		<field name="receiptno" />
-		<field name="receiptdate"  type="date"/>
-
-		<complex name="bankaccount" ref="bankaccount" includefields="objid,code,title,fund.*,bank.name" jointype="many-to-one">
+		<complex name="bankaccount" ref="bankaccount" jointype="many-to-one" includefields="code,title,fund.*,acctid">
 			<key field="bankaccount_objid" target="objid"/>
-		</complex>	
+		</complex>
+			
+		<field name="type_objid" required="true"/>
+		<field name="type_title" required="true"/>
+		<field name="dtissued" required="true" />
+		<field name="issuedby_objid" required="true" />
+		<field name="issuedby_name" required="true" />
 
-		<field name="issuereceipt" required="true" defaultValue="0" type="integer"/>
-
-		<complex name="items" ref="creditmemoitem" jointype="one-to-many" required="false">
+		<complex name="items" ref="creditmemoitem" jointype="one-to-many">
 			<key field="objid" target="parentid" />
-		</complex>	
+		</complex>
 	</element>
-
 
 </schema>

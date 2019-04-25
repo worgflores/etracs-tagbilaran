@@ -253,7 +253,12 @@ class RuleMgmtService extends ActiveCrudListService {
 			it.parentid = o.objid;
 			it.pos = 0;
 			em.save(it, "actionparam");
-		}
+		};
+		if(o._deleted_params) {
+			o._deleted_params.each { v->
+				em.delete([objid:v.objid], "actionparam");
+			}
+		};
 	}
 
 	@ProxyMethod
