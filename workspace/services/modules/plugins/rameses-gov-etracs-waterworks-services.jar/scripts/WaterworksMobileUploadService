@@ -1,0 +1,50 @@
+import com.rameses.annotations.*;
+import java.text.SimpleDateFormat;
+
+class WaterworksMobileUploadService {
+	
+	@DataContext("waterworks_mobile_info")
+	def wm;
+
+	@DataContext('waterworks_billing_cycle') 
+	def wbc;
+
+	@Service('DateService')
+	def dateSvc;
+
+	@Service('PersistenceService')
+	def perSvc;
+
+	@ProxyMethod 
+	public def upload( o ) { 
+		if(!o.objid) throw new Exception("Please specify objid!");
+		if(!o.reading) throw new Exception("Please specify reading!");
+		if(!o.dtreading) throw new Exception("Please specify dtreading!");
+		if(!o.userid) throw new Exception("Please specify userid!");
+		if(!o.name) throw new Exception("Please specify reader_name!");
+		if(!o.amount) throw new Exception("Please specify amount!");
+
+		def mobileinfo = wm.find([ objid: o.account.objid ]).first();
+		if ( !mobileinfo ) throw new Exception('Account not found in mobile info table');
+		
+		def bc = wbc.find([ sectorid: mobileinfo.sectorid, year: mobileinfo.year, month: mobileinfo.month ]).first(); 
+
+		def c = [ account: o.account ]; 
+		c._schemaname = 'waterworks_consumption';
+		c.readingmethod = 'ONLINE';
+		c.acctid = o.account.objid;
+		c.dtreading = o.dtreading;
+		c.reading = o.reading;
+		c.prevreading = mobileinfo.lastreading;
+		c.reader = [objid:o.userid, name: o.name]; 
+		c.volume = c.reading - c.prevreading;
+		c.billingcycle = bc; 
+		c.amount = o.amount; 
+		c.amtpaid = 0.0; 
+		perSvc.create( c ); 
+
+		wm.find([ objid: c.acctid ]).delete(); 
+		wm.find([ objid: o.objid ]).delete(); 
+		return o;  
+	} 
+} 

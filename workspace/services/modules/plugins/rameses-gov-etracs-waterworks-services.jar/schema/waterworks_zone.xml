@@ -1,0 +1,27 @@
+<schema adapter="waterworks">
+
+	<element tablename="waterworks_zone">
+		<field name="objid" primary="true" prefix="WSZ"/>
+		<field name="code" caption="Zone Code" indexed="true" searchable="true"/>
+		<field name="description" caption="Zone Description" searchable="true"/>
+		<field name="sectorid" required="true" searchable="true"/>
+		<field name="schedule_objid" required="true" caption="Schedule"/>
+		
+		<complex name="sector" ref="waterworks_sector" jointype="many-to-one" required="true"
+			includefields="objid,code">
+			<key field="sectorid" target="objid" />
+		</complex>	
+
+		<field name="batchid" />
+		<complex name="batch" ref="waterworks_batch_billing" jointype="many-to-one" required="false"  includefields="objid,month,year">
+			<key field="batchid" target="objid" />
+		</complex>	
+
+		<field name="nextscheduleid" />
+		<complex name="nextschedule" ref="waterworks_billing_schedule" jointype="many-to-one" required="false">
+			<key field="nextscheduleid" target="objid"/>
+		</complex>
+		
+	</element>
+
+</schema>

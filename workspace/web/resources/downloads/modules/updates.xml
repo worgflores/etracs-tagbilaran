@@ -81,6 +81,9 @@ ws.host=localhost:8060
 	<module file="rameses-gov-etracs-rptis-landtax.jar" version="1.54"/>
 	<module file="rameses-gov-etracs-rptis-landtax-report.jar" version="1.53"/>
 	<module file="rameses-gov-etracs-rptis-report.jar" version="1.45"/>
- 
+	
+	<!-- PLUGINS --> 
+	<module file="plugins/rameses-gov-etracs-waterworks.jar" version="1.00"/>
+	<module file="plugins/rameses-gov-etracs-waterworks-report.jar" version="1.00"/>
 </modules>
 </app>

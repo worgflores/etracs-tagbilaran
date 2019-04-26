@@ -1,0 +1,50 @@
+import com.rameses.annotations.*;
+
+class WaterworksAccountPersistenceInterceptor{
+	
+	@Service("SequenceService")
+	def seqSvc;
+
+	@Service("DateService")
+	def dateSvc;
+
+	@DataContext('waterworks_stubout_node') 
+	def wstuboutnode;
+
+	@DataContext('waterworks_meter') 
+	def wmeter;
+
+	@Before(pattern="PersistenceService.create", eval="#{args[0]._schemaname == 'waterworks_account'}")
+	public void beforeCreate(def evt) {
+		def o  = evt.args[0];
+		o.classificationid = o.classification.objid;
+        if( !o.acctno ) {
+        	def prefix = "WACC" + dateSvc.getServerYear();
+        	o.acctno = prefix  + seqSvc.getNextFormattedSeriesA( prefix, 5 );
+        }    
+        if( !o.stuboutnodeid  && o.stuboutnode?.objid) {
+        	o.stuboutnodeid = o.stuboutnode.objid;
+        }
+        if(! o.meterid && o.meter?.objid ) {
+        	o.meterid = o.meter.objid;
+        }
+	}
+
+	@After(pattern="PersistenceService.create", eval="#{args[0]._schemaname == 'waterworks_account'}")
+	public void afterCreate(def evt) {
+		def o = evt.args[0];
+		if(o.stuboutnodeid) {
+			wstuboutnode.find( [objid: o.stuboutnodeid ] ).update( [currentacctid: o.objid ] ); 
+		}
+		if(o.meterid ) {
+			def u = [lastreading: o.meter.lastreading, lastredaingdate: o.meter.lastreadingdate, state: o.meter.state ];
+			u.currentacctid = o.objid;
+			wmeter.find( [objid: o.meterid ] ).update( u ); 
+		}
+	}
+
+	
+
+
+
+}

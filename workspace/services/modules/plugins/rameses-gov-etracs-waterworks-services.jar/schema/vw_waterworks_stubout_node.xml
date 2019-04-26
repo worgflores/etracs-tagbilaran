@@ -1,0 +1,32 @@
+<!--
+DROP VIEW IF EXISTS vw_waterworks_stubout_node;
+CREATE VIEW vw_waterworks_stubout_node AS 
+SELECT 
+son.objid,son.indexno,so.objid AS stubout_objid,so.code AS stubout_code,
+zon.objid AS zone_objid, zon.code AS zone_code, sec.objid AS sector_objid, sec.code AS sector_code,
+so.barangay_objid, so.barangay_name, sked.objid AS schedule_objid, wa.objid AS acctid 
+FROM waterworks_stubout_node son 
+INNER JOIN waterworks_stubout so ON son.stuboutid = so.objid
+INNER JOIN waterworks_zone zon ON so.zoneid = zon.objid
+INNER JOIN waterworks_sector sec ON zon.sectorid = sec.objid  
+LEFT JOIN waterworks_block_schedule sked ON zon.schedule_objid = sked.objid 
+LEFT JOIN waterworks_account wa ON wa.stuboutnodeid = son.objid;
+-->	
+<schema adapter="waterworks">
+	<element tablename="vw_waterworks_stubout_node">
+		<field name="objid" primary="true"/>
+		<field name="indexno" caption="Seq No" indexed="true" searchable="true"/>
+		<field name="stubout_code" caption="Stubout No" indexed="true" searchable="true"/>
+		<field name="zone_code" caption="Zone" indexed="true" searchable="true"/>
+		<field name="sector_code" caption="Sector" indexed="true" searchable="true"/>
+		<field name="barangay_name" caption="Barangay" indexed="true" searchable="true"/>
+		<field name="currentacctid" required="true"/>
+		<field name="stubout_objid"/>
+		<field name="zone_objid" />
+		<field name="sector_objid" />
+		<field name="schedule_objid" />
+		<field name="barangay_objid" />
+		<field name="acctno" />
+		<field name="acctname" />
+	</element>
+</schema>

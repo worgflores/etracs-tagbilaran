@@ -1,0 +1,19 @@
+import com.rameses.annotations.*;
+
+class WaterworksStatementAccountReport {
+	
+    @After(pattern="FormReportService.getParameters",  eval="#{ args[0].reportid == 'water_statement_account' }" )
+	public void afterGetParameters( evt ) {
+		def obj = evt.args[0];
+		def p = evt.result; 
+		//if (!p.parameters ) p.parameters = [];
+		//p.parameters << [ name:'startdate', caption:'Start Date', type:'date' ]; 
+	} 
+ 
+    @After(pattern="FormReportService.getData",  eval="#{ args[0].reportid == 'water_statement_account' }" )
+	public void afterGetData( evt ) { 
+		def obj = evt.args[0];
+		throw new Exception("xxx " + obj);
+		def p = p.parameters;
+	} 
+}
